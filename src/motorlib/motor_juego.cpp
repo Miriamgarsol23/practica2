@@ -1021,34 +1021,34 @@ void nucleo_motor_juego(MonitorJuego &monitor, int acc) {
 
   switch (monitor.getLevel()) {
 
-  case 0: { // Dos agentes deben llegar juntos a su Planta Belkanita ('U')
+  case 0: { // Dos agentes deben llegar juntos a su Planta de Tratamiento de Residuos ('U')
     unsigned char celdaI = monitor.getMapa()->getCelda(
         monitor.get_entidad(0)->getFil(), monitor.get_entidad(0)->getCol());
     unsigned char celdaT = monitor.getMapa()->getCelda(
         monitor.get_entidad(1)->getFil(), monitor.get_entidad(1)->getCol());
 
-    // Registro de pisada / abandono de Planta Belkanita — Ingeniero
+    // Registro de pisada / abandono de Planta de Tratamiento de Residuos — Ingeniero
     if (celdaI == 'U' && !monitor.getRecargaPisadaIngeniero()) {
       monitor.setRecargaPisadaIngeniero(true);
       monitor.setRecargaAbandonadaIngeniero(false);
-      monitor.addMensaje("Ingeniero", "Planta Belkanita alcanzada");
+      monitor.addMensaje("Ingeniero", "Planta de Tratamiento de Residuos alcanzada");
     } else if (celdaI != 'U' && monitor.getRecargaPisadaIngeniero() &&
                !monitor.getRecargaAbandonadaIngeniero()) {
       monitor.setRecargaAbandonadaIngeniero(true);
       monitor.setRecargaPisadaIngeniero(false);
-      monitor.addMensaje("Ingeniero", "Planta Belkanita abandonada");
+      monitor.addMensaje("Ingeniero", "Planta de Tratamiento de Residuos abandonada");
     }
 
-    // Registro de pisada / abandono de Planta Belkanita — Técnico
+    // Registro de pisada / abandono de Planta de Tratamiento de Residuos — Técnico
     if (celdaT == 'U' && !monitor.getRecargaPisadaTecnico()) {
       monitor.setRecargaPisadaTecnico(true);
       monitor.setRecargaAbandonadaTecnico(false);
-      monitor.addMensaje("Tecnico", "Planta Belkanita alcanzada");
+      monitor.addMensaje("Tecnico", "Planta de Tratamiento de Residuos alcanzada");
     } else if (celdaT != 'U' && monitor.getRecargaPisadaTecnico() &&
                !monitor.getRecargaAbandonadaTecnico()) {
       monitor.setRecargaAbandonadaTecnico(true);
       monitor.setRecargaPisadaTecnico(false);
-      monitor.addMensaje("Tecnico", "Planta Belkanita abandonada");
+      monitor.addMensaje("Tecnico", "Planta de Tratamiento de Residuos abandonada");
     }
 
     // Aviso de salida de camino — Ingeniero
@@ -1066,17 +1066,17 @@ void nucleo_motor_juego(MonitorJuego &monitor, int acc) {
       monitor.addMensaje("Tecnico", "Aviso: Fuera de camino");
     }
 
-    // Condición de éxito: ambos en su Planta Belkanita simultáneamente
+    // Condición de éxito: ambos en su Planta de Tratamiento de Residuos simultáneamente
     if (celdaI == 'U' && celdaT == 'U') {
-      monitor.addMensaje("Sistema", "Mision completada: Puesto Base");
+      monitor.addMensaje("Sistema", "Mision completada: Planta de Tratamiento de Residuos");
       if (monitor.getRecargaPisadaIngeniero())
-        monitor.addMensaje("Ingeniero", "Llego a puesto base");
+        monitor.addMensaje("Ingeniero", "Llego a planta de tratamiento de residuos");
       if (monitor.getRecargaPisadaTecnico())
-        monitor.addMensaje("Tecnico", "Llego a puesto base");
+        monitor.addMensaje("Tecnico", "Llego a planta de tratamiento de residuos");
       if (monitor.getRecargaAbandonadaIngeniero())
-        monitor.addMensaje("Ingeniero", "Abandono puesto base");
+        monitor.addMensaje("Ingeniero", "Abandono planta de tratamiento de residuos");
       if (monitor.getRecargaAbandonadaTecnico())
-        monitor.addMensaje("Tecnico", "Abandono puesto base");
+        monitor.addMensaje("Tecnico", "Abandono planta de tratamiento de residuos");
       if (monitor.getCaminoAbandonadoIngeniero())
         monitor.addMensaje("Ingeniero", "Aviso: Fuera de camino");
       if (monitor.getCaminoAbandonadoTecnico())
