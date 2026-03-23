@@ -30,9 +30,147 @@ Action ComportamientoTecnico::think(Sensores sensores) {
 
 
 // Niveles del técnico
+// -----------------------------------------------------------------------
+// Funciones auxiliares para el Nivel 0 del Técnico
+// -----------------------------------------------------------------------
+
+char ViablePorAlturaT(char casilla, int dif) {
+  if (abs(dif) <= 1)
+    return casilla;
+  else
+    return 'P';
+}
+
+/**
+ * Determina la mejor opción entre las 3 casillas del frente para el Técnico.
+ * El parámetro 'atascado' permite incluir hierba 'H' como opción de escape
+ * cuando el agente lleva demasiados giros sin avanzar.
+ */
+int VeoCasillaInteresanteT(char i, char c, char d, bool zap, bool atascado) {
+  // Prioridad 1: casilla U (planta de tratamiento de residuos)
+  if      (c == 'U') return 2;
+  else if (i == 'U') return 1;
+  else if (d == 'U') return 3;
+  // Prioridad 2: zapatillas, solo si no las tenemos
+  if (!zap) {
+    if      (c == 'D') return 2;
+    else if (i == 'D') return 1;
+    else if (d == 'D') return 3;
+  }
+  // Prioridad 3: camino normal
+  // Con zapatillas, el bosque 'B' también cuenta como camino
+  if      (c == 'C' || (zap && c == 'B')) return 2;
+  else if (i == 'C' || (zap && i == 'B')) return 1;
+  else if (d == 'C' || (zap && d == 'B')) return 3;
+  // Prioridad 4 (solo si atascado): hierba como escape de emergencia
+  if (atascado) {
+    if      (c == 'H') return 2;
+    else if (i == 'H') return 1;
+    else if (d == 'H') return 3;
+  }
+  return 0;
+}
+
+// -----------------------------------------------------------------------
+// Comportamiento del Técnico — Nivel 0
+// -----------------------------------------------------------------------
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
   Action accion = IDLE;
 
+  ActualizarMapa(sensores);
+
+  // ------------------------------------------------------------------
+  // FASE 1: Actualización de variables de estado
+  // ------------------------------------------------------------------
+
+  if (sensores.superficie[0] == 'D')
+    tiene_zapatillas = true;
+
+  if (last_action == WALK)
+    contadorGiros = 0;
+
+  // ------------------------------------------------------------------
+  // FASE 2: Definición del comportamiento
+  // ------------------------------------------------------------------
+
+  // Regla 0: objetivo cumplido → parar
+  if (sensores.superficie[0] == 'U') {
+    last_action = IDLE;
+    return IDLE;
+  }
+
+  // Esquivar al Ingeniero si está justo delante
+  // Regla de esquivar al Ingeniero:
+  // El Técnico actúa DESPUÉS que el Ingeniero, así que cuando ve al Ingeniero
+  // delante simplemente busca otro camino sin esperar.
+  if (sensores.agentes[2] == 'i') {
+    // Miramos si hay camino por la izquierda o derecha para rodearle
+    char i = ViablePorAlturaT(sensores.superficie[1],
+                               sensores.cota[1] - sensores.cota[0]);
+    char d = ViablePorAlturaT(sensores.superficie[3],
+                               sensores.cota[3] - sensores.cota[0]);
+    if (i == 'C' || i == 'U' || i == 'D' || (tiene_zapatillas && i == 'B'))
+      accion = TURN_SL;
+    else if (d == 'C' || d == 'U' || d == 'D' || (tiene_zapatillas && d == 'B'))
+      accion = TURN_SR;
+    else
+      accion = ultimoGiroIzq ? TURN_SR : TURN_SL;
+    ultimoGiroIzq = !ultimoGiroIzq;
+    contadorGiros++;
+    last_action = accion;
+    return accion;
+  }
+
+  // Calcular casillas viables por altura (desnivel máximo 1 siempre)
+  char i = ViablePorAlturaT(sensores.superficie[1],
+                              sensores.cota[1] - sensores.cota[0]);
+  char c = ViablePorAlturaT(sensores.superficie[2],
+                              sensores.cota[2] - sensores.cota[0]);
+  char d = ViablePorAlturaT(sensores.superficie[3],
+                              sensores.cota[3] - sensores.cota[0]);
+
+  // Si llevamos más de 8 giros seguidos activamos modo escape (permite hierba)
+  bool atascado = (contadorGiros > 8);
+
+  int pos = VeoCasillaInteresanteT(i, c, d, tiene_zapatillas, atascado);
+
+  if (atascado && pos != 0) {
+    // Encontró una salida de emergencia → reseteamos el contador
+    contadorGiros = 0;
+  }
+
+  if (contadorGiros >= 16) {
+    // Llevamos demasiados giros incluso con hierba disponible
+    // Forzamos giro alternado para cambiar completamente de orientación
+    accion = ultimoGiroIzq ? TURN_SR : TURN_SL;
+    ultimoGiroIzq = !ultimoGiroIzq;
+    contadorGiros = 0;
+  }
+  else {
+    switch (pos) {
+      case 2:
+        accion = WALK;
+        break;
+      case 1:
+        accion = TURN_SL;
+        ultimoGiroIzq = true;
+        contadorGiros++;
+        break;
+      case 3:
+        accion = TURN_SR;
+        ultimoGiroIzq = false;
+        contadorGiros++;
+        break;
+      default:
+        // No hay nada interesante → girar alternando sentido
+        accion = ultimoGiroIzq ? TURN_SR : TURN_SL;
+        ultimoGiroIzq = !ultimoGiroIzq;
+        contadorGiros++;
+        break;
+    }
+  }
+
+  last_action = accion;
   return accion;
 }
 

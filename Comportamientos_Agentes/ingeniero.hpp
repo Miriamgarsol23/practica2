@@ -21,7 +21,12 @@ public:
    * @param size Tamaño del mapa (si es 0, se inicializa más tarde)
    */
   ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
-    // Inicializar Variables de Estado
+    last_action      = IDLE;
+    tiene_zapatillas = false;
+    giro45Izq        = 0;
+    contadorGiros    = 0;
+    ultimoGiroIzq    = false;
+    contadorEspera = 0;
   }
 
   /**
@@ -178,11 +183,17 @@ protected:
 
 
 
-private:
+  private:
   // =========================================================================
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
 
+  Action last_action;       // Almacena la última acción ejecutada
+  bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
+  int giro45Izq;            // Número de giros a la izq que quedan por dar
+  int contadorGiros;        // Cuenta giros consecutivos sin avanzar
+  bool ultimoGiroIzq;       // Recuerda el último sentido de giro
+  int contadorEspera;   // Turnos que lleva esperando al Técnico
 };
 
 #endif

@@ -44,9 +44,181 @@ Action ComportamientoIngeniero::think(Sensores sensores)
 }
 
 // Niveles iniciales (Comportamientos reactivos simples)
+// -----------------------------------------------------------------------
+// Funciones auxiliares para el Nivel 0 del Ingeniero
+// -----------------------------------------------------------------------
+
+/**
+ * Determina si una casilla es viable por diferencia de altura.
+ * Devuelve la casilla original si es accesible, o 'P' si no lo es.
+ * Sin zapatillas: desnivel máximo 1. Con zapatillas: desnivel máximo 2.
+ * IMPORTANTE: tanto subir demasiado (choque) como bajar demasiado (caída)
+ * son peligrosos, por eso usamos abs(dif).
+ */
+char ViablePorAlturaI(char casilla, int dif, bool zap) {
+  if (abs(dif) <= 1 || (zap && abs(dif) <= 2))
+    return casilla;
+  else
+    return 'P';
+}
+
+/**
+ * Determina la mejor opción entre las 3 casillas del frente.
+ * Prioridad: U (planta residuos) > D (zapatillas, si no las tengo) > C (camino)
+ * Devuelve: 2 = mejor ir recto (WALK)
+ *           1 = mejor girar izq (TURN_SL)
+ *           3 = mejor girar dcha (TURN_SR)
+ *           0 = no hay nada interesante
+ */
+int VeoCasillaInteresanteI(char i, char c, char d, bool zap) {
+  // Prioridad 1: casilla U
+  if      (c == 'U') return 2;
+  else if (i == 'U') return 1;
+  else if (d == 'U') return 3;
+  // Prioridad 2: zapatillas si no las tenemos
+  if (!zap) {
+    if      (c == 'D') return 2;
+    else if (i == 'D') return 1;
+    else if (d == 'D') return 3;
+  }
+  // Prioridad 3: camino normal
+  if      (c == 'C') return 2;
+  else if (i == 'C') return 1;
+  else if (d == 'C') return 3;
+  return 0;
+}
+
+// -----------------------------------------------------------------------
+// Comportamiento del Ingeniero — Nivel 0
+// -----------------------------------------------------------------------
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores)
 {
   Action accion = IDLE;
+
+  // Actualizar mapa con lo que vemos ahora
+  ActualizarMapa(sensores);
+
+  // ------------------------------------------------------------------
+  // FASE 1: Actualización de variables de estado
+  // ------------------------------------------------------------------
+
+  // Si estamos encima de zapatillas, las recogemos
+  if (sensores.superficie[0] == 'D')
+    tiene_zapatillas = true;
+
+  // Si la última acción fue WALK, resetear contador de giros
+  if (last_action == WALK)
+    contadorGiros = 0;
+
+  // ------------------------------------------------------------------
+  // FASE 2: Definición del comportamiento
+  // ------------------------------------------------------------------
+
+  // Regla 0: objetivo cumplido → parar
+  if (sensores.superficie[0] == 'U') {
+    last_action = IDLE;
+    return IDLE;
+  }
+
+
+  // Regla de esquivar al Técnico:
+  // El Ingeniero actúa PRIMERO. Si ve al Técnico cerca espera hasta 3 turnos
+  // para dejarle pasar. Si tras esos turnos sigue bloqueado, se aparta él.
+  if (sensores.agentes[1] == 't' || 
+      sensores.agentes[2] == 't' || 
+      sensores.agentes[3] == 't') {
+    contadorEspera++;
+    if (contadorEspera <= 3) {
+      // Esperamos unos turnos para que el Técnico se mueva
+      last_action = IDLE;
+      return IDLE;
+    } else {
+      // El Técnico no se ha movido → nos apartamos nosotros
+      // Giramos hacia donde NO está el Técnico
+      contadorEspera = 0;
+      if (sensores.agentes[1] != 't') {
+        accion = TURN_SL;
+      } else if (sensores.agentes[3] != 't') {
+        accion = TURN_SR;
+      } else {
+        // Está por todos lados → giro completo de 180 (dos giros seguidos)
+        // Usamos giro45Izq para ejecutar dos giros en turnos consecutivos
+        giro45Izq = 2;
+        accion = TURN_SL;
+        giro45Izq--;
+      }
+      last_action = accion;
+      return accion;
+    }
+  } else {
+    // No hay Técnico cerca → resetear contador de espera
+    contadorEspera = 0;
+  }
+  // Si hay giros pendientes del apartado anterior, ejecutarlos
+  if (giro45Izq > 0) {
+    giro45Izq--;
+    last_action = TURN_SL;
+    return TURN_SL;
+  }
+
+  // Calcular las 3 casillas del frente filtrando por altura accesible
+  // pos[1] = 45° izquierda, pos[2] = recto, pos[3] = 45° derecha
+  char i = ViablePorAlturaI(sensores.superficie[1],
+                             sensores.cota[1] - sensores.cota[0],
+                             tiene_zapatillas);
+  char c = ViablePorAlturaI(sensores.superficie[2],
+                             sensores.cota[2] - sensores.cota[0],
+                             tiene_zapatillas);
+  char d = ViablePorAlturaI(sensores.superficie[3],
+                             sensores.cota[3] - sensores.cota[0],
+                             tiene_zapatillas);
+
+  
+  // Si hay giros pendientes (retroceso 180°), ejecutarlos primero
+  if (giro45Izq > 0) {
+    giro45Izq--;
+    last_action = TURN_SL;
+    return TURN_SL;
+  }
+
+  int pos = VeoCasillaInteresanteI(i, c, d, tiene_zapatillas);
+
+  if (pos != 0) {
+    // Hay camino visible → resetear contador y moverse
+    contadorGiros = 0;
+    switch (pos) {
+      case 2:
+        accion = WALK;
+        break;
+      case 1:
+        accion = TURN_SL;
+        ultimoGiroIzq = true;
+        contadorGiros++;
+        break;
+      case 3:
+        accion = TURN_SR;
+        ultimoGiroIzq = false;
+        contadorGiros++;
+        break;
+    }
+  }
+  else {
+    // No hay camino visible
+    contadorGiros++;
+    if (contadorGiros >= 16) {
+      // Llevamos demasiados giros → girar 180° para retroceder
+      giro45Izq = 3;  // 4 giros de 45° = 180°
+      contadorGiros = 0;
+      accion = TURN_SL;
+      giro45Izq--;
+    } else {
+      // Seguir girando buscando
+      accion = ultimoGiroIzq ? TURN_SR : TURN_SL;
+      ultimoGiroIzq = !ultimoGiroIzq;
+    }
+  }
+
+  last_action = accion;
   return accion;
 }
 

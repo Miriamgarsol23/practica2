@@ -33,6 +33,10 @@ public:
    */
   ComportamientoTecnico(unsigned int size = 0) : Comportamiento(size) {
     // Inicializar Variables de Estado
+    last_action      = IDLE;
+    tiene_zapatillas = false;
+    contadorGiros    = 0;
+    ultimoGiroIzq    = true;
   }
 
   /**
@@ -188,7 +192,10 @@ private:
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
 
-  
+  Action last_action;       // Almacena la última acción ejecutada
+  bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
+  int contadorGiros;        // Cuenta giros consecutivos sin avanzar
+  bool ultimoGiroIzq;       // Recuerda el último sentido de giro
 };
 
 #endif
